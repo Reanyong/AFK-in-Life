@@ -18,7 +18,7 @@ public class PlayerController : MonoBehaviour
 
     private Vector2 _moveInput;
     private Vector2 _lookInput;
-    private float _xRotation = 0f; // 카메라 상하 회전 누적값
+    private float _xRotation = 0f;
 
     private void Awake()
     {
