@@ -30,10 +30,18 @@ public class ProjectileLogic : MonoBehaviour
     // 충돌했을 때 호출되는 함수
     void OnTriggerEnter(Collider other)
     {
-        // 만약 Ground와 충돌했으면
+        // 타겟에 맞으면 피격 처리 후 총알 삭제
+        HitTarget target = other.GetComponent<HitTarget>();
+        if (target != null)
+        {
+            target.OnHit();
+            Destroy(gameObject);
+            return;
+        }
+
+        // Ground에 맞으면 총알 삭제
         if (other.CompareTag("Ground"))
         {
-            // 이 게임 오브젝트(총알) 삭제
             Destroy(gameObject);
         }
     }
