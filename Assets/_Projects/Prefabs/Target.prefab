@@ -125,7 +125,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a46947351841434c8120fec47726091, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HitTarget
-  requiredHits: 4
+  requiredHits: 1
   onTargetCleared:
     m_PersistentCalls:
       m_Calls:
