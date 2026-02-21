@@ -10,7 +10,7 @@ public class DoorController : MonoBehaviour
     [SerializeField] private float moveDuration = 1.5f;
 
     // 플레이어가 통과한 후 문이 닫히기까지 대기 시간 (초)
-    [SerializeField] private float autoCloseDelay = 5f;
+    [SerializeField] private float autoCloseDelay = 3f;
 
     private bool _isOpen = false;
     private Vector3 _closedPosition;
