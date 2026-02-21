@@ -13,10 +13,14 @@
 *.log
 .claude/
 <<<<<<< HEAD
+<<<<<<< HEAD
 claude.md
 =======
 
 >>>>>>> f61de10 (feat: KINEMATION FPS 애니메이션 팩 dev_nyong 브랜치에 추가)
+=======
+*.md
+>>>>>>> origin/dev_nyong
 
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
 *.blend1
