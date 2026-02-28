@@ -210,5 +210,7 @@ namespace KINEMATION.FPSAnimationPack.Scripts.Weapon
         {
             return weaponSettings.ammo;
         }
+
+        public bool IsReloading => _isReloading;
     }
 }
