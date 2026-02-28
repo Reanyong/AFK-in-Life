@@ -1,3 +1,4 @@
+using KINEMATION.FPSAnimationPack.Scripts.Player;
 using KINEMATION.FPSAnimationPack.Scripts.Weapon;
 using UnityEngine;
 
@@ -7,15 +8,13 @@ using UnityEngine;
 /// 프리팹 설정 방법:
 ///   1. MX16A4.prefab / M1911.prefab 열기
 ///   2. 기존 FPSWeapon 컴포넌트를 Remove하고 ProjectileWeapon 추가
-///      (또는 Inspector에서 컴포넌트 교체)
-///   3. 총구 위치에 빈 GameObject "MuzzlePoint" 추가 → Muzzle Point 슬롯에 연결
-///   4. Projectile Prefab 슬롯에 Projectile.prefab 연결
-///   5. Projectile Speed: 80 권장 (기존 20에서 대폭 향상)
+///   3. Projectile Prefab 슬롯에 Projectile.prefab 연결
+///   4. Projectile Speed: 80 권장
 /// </summary>
 public class ProjectileWeapon : FPSWeapon
 {
     [Header("프로젝타일 설정")]
-    [Tooltip("총구 위치 Transform. 없으면 이 오브젝트 위치에서 발사.")]
+    [Tooltip("총구 위치 Transform. 없으면 카메라 앞에서 발사.")]
     [SerializeField] private Transform muzzlePoint;
 
     [Tooltip("발사할 프로젝타일 프리팹 (Projectile.prefab)")]
@@ -24,10 +23,23 @@ public class ProjectileWeapon : FPSWeapon
     [Tooltip("프로젝타일 초기 속도 (m/s). 80~120 권장.")]
     [SerializeField] private float projectileSpeed = 80f;
 
+    // 달리는 도중 bob 없는 안정적인 조준 방향을 위해 FPSPlayer 참조
+    private FPSPlayer _fpsPlayer;
+
+    public override void Initialize(GameObject owner)
+    {
+        base.Initialize(owner);
+        // SK_Arms_Mono에 붙어있는 FPSPlayer 컴포넌트 참조
+        _fpsPlayer = owner.GetComponent<FPSPlayer>();
+    }
+
     protected override void OnFire()
     {
         // 발사 불가 상태면 아무것도 하지 않음
         if (!_isFiring || _isReloading) return;
+
+        // 달리는 중에는 발사 차단
+        if (_fpsPlayer != null && _fpsPlayer.IsSprinting) return;
 
         // 탄약 없으면 자동 장전 후 종료 (총알 스폰 안 함)
         if (_activeAmmo <= 0)
@@ -46,7 +58,6 @@ public class ProjectileWeapon : FPSWeapon
     {
         // 이미 장전 중이면 무시 (R 여러 번 눌러도 한 번만 장전)
         if (_isReloading) return;
-
         base.OnReload();
     }
 
@@ -64,14 +75,14 @@ public class ProjectileWeapon : FPSWeapon
             return;
         }
 
-        Transform cam = Camera.main.transform;
+        // 방향: FPSPlayer의 bob 없는 안정적인 조준 방향
+        // FPSPlayer가 없으면 Camera.main.forward 폴백
+        Vector3 direction = _fpsPlayer != null
+            ? _fpsPlayer.StableAimDirection
+            : Camera.main.transform.forward;
 
-        // 방향: 카메라 정면 (크로스헤어 기준 - 정확한 조준감)
-        Vector3 direction = cam.forward;
-
-        // 위치: 카메라에서 살짝 앞 (총구가 아닌 화면 중앙 기준으로 스폰)
-        // 총구에서 나오는 것처럼 보이면서도 오른쪽 편향 없음
-        Vector3 spawnPos = cam.position + direction * 0.5f;
+        // 위치: 카메라에서 살짝 앞 (화면 중앙 기준)
+        Vector3 spawnPos = Camera.main.transform.position + direction * 0.5f;
 
         GameObject proj = Instantiate(projectilePrefab, spawnPos, Quaternion.LookRotation(direction));
 

@@ -332,6 +332,30 @@ namespace KINEMATION.FPSAnimationPack.Scripts.Player
             return _weapons[_activeWeaponIndex];
         }
 
+        /// <summary>
+        /// 카메라 bob/sway 없는 안정적인 조준 방향.
+        /// 루트(수평 회전) + SK_Arms_Mono(수직 회전)만 사용해 계산.
+        /// ProjectileWeapon에서 달리는 도중 총알 방향 보정에 사용.
+        /// </summary>
+        /// <summary>
+        /// 달리기(스프린트 또는 전술 스프린트) 중이면 true.
+        /// ProjectileWeapon에서 발사 차단에 사용.
+        /// </summary>
+        public bool IsSprinting => _bSprinting || _bTacSprinting;
+
+        public Vector3 StableAimDirection
+        {
+            get
+            {
+                if (_controller == null) return transform.forward;
+                // 수평: CharacterController 루트의 Y 회전
+                // 수직: lookInput.y (SK_Arms_Mono의 피치)
+                Quaternion horizontal = Quaternion.Euler(0f, _controller.transform.eulerAngles.y, 0f);
+                Quaternion vertical   = Quaternion.Euler(_lookInput.y, 0f, 0f);
+                return (horizontal * vertical) * Vector3.forward;
+            }
+        }
+
         public FPSWeapon GetActivePrefab()
         {
             return _prefabComponents[_activeWeaponIndex];
