@@ -125,6 +125,30 @@ namespace KINEMATION.FPSAnimationPack.Scripts.Player
             Invoke(nameof(EquipWeapon_Incremental), delay);
         }
 
+        /// <summary>
+        /// 특정 인덱스의 무기로 직접 전환. WeaponSlotSelector에서 1/2 키 입력 시 호출.
+        /// </summary>
+        public void SelectWeaponByIndex(int index)
+        {
+            if (index < 0 || index >= _weapons.Count) return;
+            if (index == _activeWeaponIndex) return;
+
+            float delay = GetActiveWeapon().OnUnEquipped();
+            _pendingWeaponIndex = index;
+            Invoke(nameof(EquipWeaponAtIndex), delay);
+        }
+
+        private int _pendingWeaponIndex;
+
+        // 슬롯 직접 선택 전용 — 기존 EquipWeapon()과 달리 인덱스를 여기서 변경
+        private void EquipWeaponAtIndex()
+        {
+            GetActiveWeapon().gameObject.SetActive(false); // 이전 무기 숨기기
+            _activeWeaponIndex = _pendingWeaponIndex;      // 이제 인덱스 변경
+            GetActiveWeapon().OnEquipped();                // 새 무기 장착
+            Invoke(nameof(SetWeaponVisible), 0.05f);
+        }
+
         public void OnChangeFireMode()
         {
             var prevFireMode = GetActiveWeapon().ActiveFireMode;

@@ -169,7 +169,8 @@ namespace KINEMATION.FPSAnimationPack.Scripts.Weapon
             recoilAnimation.Stop();
         }
 
-        private void OnFire()
+        // 서브클래스(ProjectileWeapon 등)가 발사 시점에 추가 동작을 할 수 있도록 protected virtual로 변경
+        protected virtual void OnFire()
         {
             if (!_isFiring || _isReloading) return;
 
