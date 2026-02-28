@@ -85,6 +85,22 @@ namespace KINEMATION.FPSAnimationPack.Scripts.Player
 
         private KTransform _localCameraPoint;
         private CharacterController _controller;
+
+        // 물리 (중력/점프/앉기) ──────────────────────────────────────────────
+        [Header("물리")]
+        [SerializeField] private float jumpForce       = 6f;
+        [SerializeField] private float gravity         = -25f;
+        [SerializeField] private float crouchHeight    = 0.9f;
+        [SerializeField] private float crouchSpeed     = 8f;
+        [SerializeField] private float crouchCamOffset = -0.5f;
+
+        private float     _verticalVelocity;
+        private bool      _isCrouching;
+        private float     _standHeight;
+        private float     _standCenterY;
+        private float     _crouchYOffset;     // 앉기 Y 오프셋 (lerp 중간값)
+        private Transform _camTransform;      // 실제 Camera 오브젝트 Transform
+        private float     _camStandLocalY;    // Camera 초기 localPosition.y
         
         private void EquipWeapon_Incremental()
         {
@@ -168,6 +184,12 @@ namespace KINEMATION.FPSAnimationPack.Scripts.Player
         
         public void OnJump()
         {
+            if (_controller == null) return;
+            // 앉은 상태에서 Space → 일어서기
+            if (_isCrouching) { _isCrouching = false; return; }
+            // 공중이면 점프 불가
+            if (!_controller.isGrounded) return;
+            _verticalVelocity = jumpForce;
             _animator.SetBool(IS_IN_AIR, true);
             Invoke(nameof(OnLand), 0.4f);
         }
@@ -365,6 +387,17 @@ namespace KINEMATION.FPSAnimationPack.Scripts.Player
         {
             _animator = GetComponent<Animator>();
             _controller = transform.root.GetComponent<CharacterController>();
+            if (_controller != null)
+            {
+                _standHeight  = _controller.height;
+                _standCenterY = _controller.center.y;
+            }
+            // 카메라 초기 localPosition.y 저장
+            if (UnityEngine.Camera.main != null)
+            {
+                _camTransform    = UnityEngine.Camera.main.transform;
+                _camStandLocalY  = _camTransform.localPosition.y;
+            }
             _recoilAnimation = GetComponent<RecoilAnimation>();
             _playerSound = GetComponent<FPSPlayerSound>();
             
@@ -433,17 +466,52 @@ namespace KINEMATION.FPSAnimationPack.Scripts.Player
             _animator.SetLayerWeight(_rightHandLayerIndex, _animator.GetFloat(RIGHT_HAND_WEIGHT));
             
             Vector3 cameraPosition = -_localCameraPoint.position;
-            
+
             transform.localRotation = Quaternion.Euler(_lookInput.y, 0f, 0f);
-            transform.localPosition = transform.localRotation * cameraPosition - cameraPosition;
+            // 앉기 Y 오프셋을 카메라 sway 위치에 합산
+            Vector3 swayPos = transform.localRotation * cameraPosition - cameraPosition;
+            swayPos.y += _crouchYOffset;
+            transform.localPosition = swayPos;
 
             if (_controller != null)
             {
                 Transform root = _controller.transform;
                 root.rotation *= Quaternion.Euler(0f, _lookInput.x, 0f);
+
+                // 중력
+                bool isGrounded = _controller.isGrounded;
+                if (isGrounded && _verticalVelocity < 0f)
+                    _verticalVelocity = -4f;    // 지면 스냅 (극단 누적 방지)
+                else
+                    _verticalVelocity += gravity * Time.deltaTime;
+                _verticalVelocity = Mathf.Max(_verticalVelocity, gravity); // 최솟값 클램프
+
+                // 수평 이동 + 수직 속도 합산 → Move 1회
                 Vector3 movement = root.forward * _moveInput.y + root.right * _moveInput.x;
                 movement *= _smoothGait * 1.5f;
-                _controller.Move(movement * Time.deltaTime);
+                _controller.Move((movement + Vector3.up * _verticalVelocity) * Time.deltaTime);
+
+                // C키 앉기 토글 (Keyboard.current 직접 폴링 - Send Messages 의존 없음)
+                if (Keyboard.current != null && Keyboard.current.cKey.wasPressedThisFrame)
+                    _isCrouching = !_isCrouching;
+
+                // CharacterController 높이 전환 (발 위치 고정)
+                float targetH = _isCrouching ? crouchHeight : _standHeight;
+                _controller.height = Mathf.Lerp(_controller.height, targetH, crouchSpeed * Time.deltaTime);
+                // 높이 변화에 맞춰 center.y 조정 → 발 위치가 유지됨
+                float newCY = _standCenterY + (_controller.height - _standHeight) * 0.5f;
+                _controller.center = new Vector3(_controller.center.x, newCY, _controller.center.z);
+
+                // 앉기 Y 오프셋 lerp
+                _crouchYOffset = Mathf.Lerp(_crouchYOffset,
+                    _isCrouching ? crouchCamOffset : 0f, crouchSpeed * Time.deltaTime);
+                // 카메라 오브젝트도 동일하게 내림 (팔/총과 카메라가 함께 움직임)
+                if (_camTransform != null)
+                {
+                    Vector3 cp = _camTransform.localPosition;
+                    cp.y = _camStandLocalY + _crouchYOffset;
+                    _camTransform.localPosition = cp;
+                }
             }
         }
 
